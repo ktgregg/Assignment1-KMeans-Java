@@ -8,7 +8,16 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.*;
 
+/**
+ * Class to store info about the centroids
+ */
 class Centroid extends Point{
+    /**
+     * Constructor
+     * @param x x position
+     * @param y y position
+     * @param centroid assigned/nearest centroid
+     */
     Centroid(double x, double y, int centroid) {
         super(x, y, centroid);
     }
@@ -17,12 +26,31 @@ class Centroid extends Point{
         return "centroid: " + centroid + " at coordinates: " + xPos + ", " + yPos;
     }
 }
+
+/**
+ * Class to store info about the points
+ */
 class Point implements Comparable<Point>
 {
+    /**
+     * x position of the point
+     */
     double xPos;
+    /**
+     * y position of the point
+     */
     double yPos;
+    /**
+     * index of the centroid the Point is closest to
+     */
     int centroid;
 
+    /**
+     * constructor
+     * @param x x position
+     * @param y y position
+     * @param centroid assigned/nearest centroid
+     */
     Point(double x, double y, int centroid)
     {
         this.xPos = x;
@@ -35,18 +63,35 @@ class Point implements Comparable<Point>
         return xPos + ", " + yPos + "   in centroid: " + centroid;
     }
 
+    /**
+     * get X position
+     * @return x position
+     */
     public double getxPos() {
         return xPos;
     }
 
+    /**
+     * get Y position
+     * @return y position
+     */
     public double getyPos() {
         return yPos;
     }
 
+    /**
+     * get assigned centroid
+     * @return centroid
+     */
     public int getCentroid() {
         return centroid;
     }
 
+    /**
+     * compares Point objects
+     * @param o other Point
+     * @return true if Points have matching x and y positions, and are assigned to the same centroid, else false
+     */
     @Override
     public boolean equals(Object o) {
         if (this == o) return true;
@@ -60,22 +105,52 @@ class Point implements Comparable<Point>
         return Objects.hash(xPos, yPos, centroid);
     }
 
+    /**
+     * compares Point objects
+     * @param o other Point
+     * @return 0 if Points have matching x and y positions, and are assigned to the same centroid, else 1
+     */
     @Override
     public int compareTo(Point o) {
         return (centroid == o.centroid && xPos == o.xPos && yPos == o.yPos) ? 0 : 1;
     }
 }
 
+/**
+ * My Kmeans Class
+ */
 public class KMeans {
 
+    /**
+     * Calculate euclidean distance between two Points
+     * @param p1 Point 1
+     * @param p2 Point 2
+     * @return distance between the two points
+     */
     public static double distance(Point p1, Point p2)
     {
         return distance(p1.getxPos(), p1.getyPos(), p2.getxPos(), p2.getyPos());
     }
+
+    /**
+     * Calculate euclidean distance between two pairs of coordinates
+     * @param x1 x position of first point
+     * @param y1 y position of first point
+     * @param x2 x position of second point
+     * @param y2 y position of second point
+     * @return distance between the two points
+     */
     public static double distance(double x1, double y1, double x2, double y2)
     {
         return distance(new double[]{x1, y1}, new double[]{x2, y2});
     }
+
+    /**
+     * Calculate euclidean distance between two multi-dimensional arrays of coordinates
+     * @param a array of coordintates for first point
+     * @param b array of coordintates for second point
+     * @return
+     */
     public static double distance(double[] a, double[] b)
     {
         double sum = 0;
@@ -91,6 +166,7 @@ public class KMeans {
     public static void main(String[] args)
     {
         System.out.println("args " + Arrays.toString(args) + "\n");
+        // input/output paths and additional parameters are sent in through args
         String inputPath = args[0];
         String labelsOutputPath = args[1];
         String centersOutputPath = args[2];
@@ -98,6 +174,7 @@ public class KMeans {
         int numCentroids = Integer.parseInt(args[4]);
         int maxIterations = Integer.parseInt(args[5]);
 
+        // create an ArrayList of Points (empty to start)
         ArrayList<Point> points = new ArrayList<>();
         try
         {
@@ -113,8 +190,10 @@ public class KMeans {
                 points.add(p);
             }
 
+            // create and ArrayList of Centroids (empty to start)
             ArrayList<Centroid> centroids = new ArrayList<>();
 
+            // assign and create starting centroids with positions of existing points, randomly
             Random r = new Random(randomState);
             for (int i = 0; i < numCentroids; i++)
             {
@@ -123,6 +202,7 @@ public class KMeans {
                 centroids.add(c);
             }
 
+            // create a copy of the points, so we can compare after each iteration to the "previous" state
             ArrayList<Point> newPoints = new ArrayList<>();
             for (Point p : points)
             {
@@ -132,19 +212,21 @@ public class KMeans {
             int iterations = 0;
             do
             {
+                // if we've hit our limit of iterations, break
                 if (iterations == maxIterations)
                 {
                     break;
                 }
                 iterations++;
-                // create copy of points list
+
+                // set "previous" to "current" upon start of this new iteration
                 points = new ArrayList<>();
                 for (Point p : newPoints)
                 {
                     points.add(new Point(p.xPos, p.yPos, p.centroid));
                 }
 
-                // assign points to centroid
+                // assign points to centroid based on distance to the nearest centroid
                 for (Point p : newPoints)
                 {
                     int closestCentroidIndex = -1;
@@ -176,36 +258,43 @@ public class KMeans {
                             newYPos+=p.yPos;
                         }
                     }
+                    // calculate and set new x and y positions of the centroid based on the average x and y position of the associated points
                     newXPos/=numPointsAtCentroid;
                     newYPos/=numPointsAtCentroid;
                     centroids.get(i).xPos = newXPos;
                     centroids.get(i).yPos = newYPos;
                 }
+                // Print out the information for each centroid, once per iteration to see how the centroids move between iterations
                 for (Centroid c : centroids)
                 {
                     System.out.println(c.toString());
                 }
                 System.out.println();
             }
+            // loop ends if centroids have not moved since last iteration and points/centroid assignments have not changed since the last iteration
             while(!points.equals(newPoints));
 
             System.out.println("iterations: " + iterations);
 
+            // prep labels for output to csv
             String[] labels = new String[newPoints.size()];
             for(int i = 0; i < labels.length; i++)
             {
                 labels[i] = String.valueOf((newPoints.get(i).centroid));
             }
 
+            // prep centers for output to csv
             String[] centers = new String[centroids.size()];
             for(int i = 0; i < centers.length; i++)
             {
                 centers[i] = String.valueOf((centroids.get(i).xPos + "," + centroids.get(i).yPos));
             }
+
             Path outputLabelsCSV = Paths.get(labelsOutputPath);
             Path outputCentersCSV = Paths.get(centersOutputPath);
             try
             {
+                // write output csv's to later be read back in by the python notebook
                 Files.write(outputLabelsCSV, Arrays.asList(labels), StandardCharsets.UTF_8);
                 Files.write(outputCentersCSV, Arrays.asList(centers), StandardCharsets.UTF_8);
             }
@@ -220,11 +309,11 @@ public class KMeans {
     }
 
     /**
-     * modified https://stackoverflow.com/questions/33034833/converting-csv-file-into-2d-array
+     * modified from https://stackoverflow.com/questions/33034833/converting-csv-file-into-2d-array
      * @param path inputPath
      * @return 2d array
-     * @throws FileNotFoundException
-     * @throws IOException
+     * @throws FileNotFoundException if file is not found
+     * @throws IOException if unable to open file
      */
     public static double[][] readCSVdouble(String path) throws FileNotFoundException, IOException {
         try (FileReader fr = new FileReader(path);
