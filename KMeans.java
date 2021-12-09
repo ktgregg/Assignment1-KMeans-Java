@@ -8,6 +8,15 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.*;
 
+class Centroid extends Point{
+    Centroid(double x, double y, int centroid) {
+        super(x, y, centroid);
+    }
+    @Override
+    public String toString() {
+        return "centroid: " + centroid + " at coordinates: " + xPos + ", " + yPos;
+    }
+}
 class Point implements Comparable<Point>
 {
     double xPos;
@@ -53,21 +62,21 @@ class Point implements Comparable<Point>
 
     @Override
     public int compareTo(Point o) {
-        return (centroid == o.centroid) ? 0 : 1;
+        return (centroid == o.centroid && xPos == o.xPos && yPos == o.yPos) ? 0 : 1;
     }
 }
 
 public class KMeans {
 
-    public double distance(Point p1, Point p2)
+    public static double distance(Point p1, Point p2)
     {
         return distance(p1.getxPos(), p1.getyPos(), p2.getxPos(), p2.getyPos());
     }
-    public double distance(double x1, double y1, double x2, double y2)
+    public static double distance(double x1, double y1, double x2, double y2)
     {
         return distance(new double[]{x1, y1}, new double[]{x2, y2});
     }
-    public double distance(double[] a, double[] b)
+    public static double distance(double[] a, double[] b)
     {
         double sum = 0;
         for (int i = 0; i < a.length; i++)
@@ -81,44 +90,38 @@ public class KMeans {
 
     public static void main(String[] args)
     {
-        String blobsPath = "blobs.csv";
-        String outputPath = "output.csv";
+        System.out.println("args " + Arrays.toString(args) + "\n");
+        String inputPath = args[0];
+        String labelsOutputPath = args[1];
+        String centersOutputPath = args[2];
+        int randomState = Integer.parseInt(args[3]);
+        int numCentroids = Integer.parseInt(args[4]);
+        int maxIterations = Integer.parseInt(args[5]);
 
         ArrayList<Point> points = new ArrayList<>();
-        KMeans kMeans = new KMeans();
-
-        int numCentroids = 3;
         try
         {
-            // read the blobs data from the notebook generated CSVs
-            double[][] blobs = readCSVdouble(blobsPath);
+            // read the data from the notebook generated CSVs
+            double[][] data = readCSVdouble(inputPath);
 
             // fill out list of points with the points, no centroid assigned (-1) to start
-            for (int i = 0; i < blobs.length; i++)
+            for (int i = 0; i < data.length; i++)
             {
-                double xPos = blobs[i][0];
-                double yPos = blobs[i][1];
+                double xPos = data[i][0];
+                double yPos = data[i][1];
                 Point p = new Point(xPos, yPos, -1);
                 points.add(p);
             }
 
-            ArrayList<Point> centroids = new ArrayList<>();
-            // Randomly select n number of existing points as centroids
-            int randomState = 42;
+            ArrayList<Centroid> centroids = new ArrayList<>();
 
             Random r = new Random(randomState);
             for (int i = 0; i < numCentroids; i++)
             {
                 int pos = (int)(r.nextDouble() * points.size());
-                Point c = new Point(points.get(pos).xPos, points.get(pos).yPos, i);
+                Centroid c = new Centroid(points.get(pos).xPos, points.get(pos).yPos, i);
                 centroids.add(c);
             }
-
-            for (Point c : centroids)
-            {
-                //System.out.println("centroid: " + c.toString());
-            }
-            System.out.println();
 
             ArrayList<Point> newPoints = new ArrayList<>();
             for (Point p : points)
@@ -127,7 +130,6 @@ public class KMeans {
             }
 
             int iterations = 0;
-            int maxIterations = 100;
             do
             {
                 if (iterations == maxIterations)
@@ -149,7 +151,7 @@ public class KMeans {
                     double closestDistance = Double.MAX_VALUE;
                     for (int i = 0; i < centroids.size(); i++)
                     {
-                        double distance = kMeans.distance(p, centroids.get(i));
+                        double distance = distance(p, centroids.get(i));
                         if (distance < closestDistance)
                         {
                             closestCentroidIndex = centroids.get(i).centroid;
@@ -157,7 +159,6 @@ public class KMeans {
                         }
                     }
                     p.centroid = closestCentroidIndex;
-
                 }
 
                 // update centroid locations
@@ -180,10 +181,11 @@ public class KMeans {
                     centroids.get(i).xPos = newXPos;
                     centroids.get(i).yPos = newYPos;
                 }
-                for (Point c : centroids)
+                for (Centroid c : centroids)
                 {
-                    //System.out.println("centroid: " + c.toString());
+                    System.out.println(c.toString());
                 }
+                System.out.println();
             }
             while(!points.equals(newPoints));
 
@@ -194,10 +196,18 @@ public class KMeans {
             {
                 labels[i] = String.valueOf((newPoints.get(i).centroid));
             }
-            Path predictionCSV = Paths.get("output.csv");
+
+            String[] centers = new String[centroids.size()];
+            for(int i = 0; i < centers.length; i++)
+            {
+                centers[i] = String.valueOf((centroids.get(i).xPos + "," + centroids.get(i).yPos));
+            }
+            Path outputLabelsCSV = Paths.get(labelsOutputPath);
+            Path outputCentersCSV = Paths.get(centersOutputPath);
             try
             {
-                Files.write(predictionCSV, Arrays.asList(labels), StandardCharsets.UTF_8);
+                Files.write(outputLabelsCSV, Arrays.asList(labels), StandardCharsets.UTF_8);
+                Files.write(outputCentersCSV, Arrays.asList(centers), StandardCharsets.UTF_8);
             }
             catch (IOException e)
             {
